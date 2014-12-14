@@ -28,7 +28,8 @@ Plugin.create(:ahiruyaki) do
     }.each do |baking_message|
       expend_stamina(1) do
         baking_message.favorite
-        add_experience 1, "#{baking_message.user[:name]} さんがあひるを焼いた。" end end
+        add_experience 1, "#{baking_message.user[:name]} さんがあひるを焼いた。"
+        Plugin.call :ahiruyaki_baked_others end end
   end
 
   on_mention do |service, messages|
@@ -42,7 +43,8 @@ Plugin.create(:ahiruyaki) do
       message.replyto_source.to_s.include? 'あひる焼き'.freeze
     }.each do |message|
       exp = (message[:created] - message.replyto_source[:created]) * 10 + 10
-      add_experience exp, "あひるを焼くなと言われた。" end
+      add_experience exp, "あひるを焼くなと言われた。"
+      Plugin.call :ahiruyaki_mention end
   end
 
   on_ahiruyaki_rankup do |after_rank|
@@ -62,15 +64,20 @@ Plugin.create(:ahiruyaki) do
   on_ahiruyaki_stamina_full do
     activity :ahiruyaki_info, "スタミナが全回復しました" end
 
+  on_ahiruyaki_bake do
+    expend_stamina(10) do
+      Service.primary.post message: '#あひる焼き'.freeze
+      Plugin.call :ahiruyaki_baked
+      add_experience 10, 'あひるを焼いた。' end
+  end
+
   command(:ahiruyaki_bake,
           name: 'あひるを焼く',
           condition: lambda{ |opt| stamina >= 1 },
           visible: true,
           role: :timeline) do |opt|
-    expend_stamina(10) do
-      Service.primary.post message: '#あひる焼き'.freeze
-      Plugin.call :ahiruyaki_baked
-      add_experience 10, 'あひるを焼いた。' end end
+      Plugin.call :ahiruyaki_bake
+  end
 
   def stamina
     [stamina_nocap, stamina_max].min end
